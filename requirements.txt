@@ -1,0 +1,8 @@
+datasets
+loralib
+sentencepiece
+accelerate
+bitsandbytes
+peft
+gradio
+appdirs

@@ -1,0 +1,13 @@
+__pycache__/
+*ckpt
+wandb
+runs
+flagged
+*.o
+chat
+quantize
+adapters/*
+cached_datasets/*
+sample/*
+transformers/*
+transformers.zip
