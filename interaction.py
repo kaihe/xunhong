@@ -7,6 +7,7 @@ import argparse
 import warnings
 import os
 
+
 assert (
     "LlamaTokenizer" in transformers._import_structure["models.llama"]
 ), "LLaMA is now in HuggingFace's main branch.\nPlease reinstall it: pip uninstall transformers && pip install git+https://github.com/huggingface/transformers.git"
@@ -14,7 +15,8 @@ from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model_path", type=str, default="decapoda-research/llama-7b-hf")
-parser.add_argument("--lora_path", type=str, default="./lora-Vicuna/checkpoint-3800")
+parser.add_argument("--lora_path", type=str, default="./lora-Vicuna/checkpoint-final")
+parser.add_argument("--use_local", type=int, default=1)
 args = parser.parse_args()
 
 tokenizer = LlamaTokenizer.from_pretrained(args.model_path)
@@ -23,9 +25,10 @@ LOAD_8BIT = True
 BASE_MODEL = args.model_path
 LORA_WEIGHTS = args.lora_path
 
+# fix the path for local checkpoint
 lora_bin_path = os.path.join(args.lora_path, "adapter_model.bin")
 print(lora_bin_path)
-if not os.path.exists(lora_bin_path):
+if not os.path.exists(lora_bin_path) and args.use_local:
     pytorch_bin_path = os.path.join(args.lora_path, "pytorch_model.bin")
     print(pytorch_bin_path)
     if os.path.exists(pytorch_bin_path):
@@ -81,7 +84,7 @@ else:
 
 def generate_prompt(instruction, input=None):
     if input:
-        return f"""Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
+        return f"""The following is a conversation between an AI assistant called Assistant and a human user called User.
 
 ### Instruction:
 {instruction}
@@ -91,7 +94,7 @@ def generate_prompt(instruction, input=None):
 
 ### Response:"""
     else:
-        return f"""Below is an instruction that describes a task. Write a response that appropriately completes the request.
+        return f"""The following is a conversation between an AI assistant called Assistant and a human user called User.
 
 ### Instruction:
 {instruction}
@@ -105,19 +108,27 @@ model.eval()
 if torch.__version__ >= "2" and sys.platform != "win32":
     model = torch.compile(model)
 
-
-def evaluate(
-    instruction,
+def interaction(
     input,
+    history,
     temperature=0.1,
     top_p=0.75,
     top_k=40,
     num_beams=4,
     max_new_tokens=128,
     repetition_penalty=1.0,
+    max_memory=256,
     **kwargs,
 ):
-    prompt = generate_prompt(instruction, input)
+    now_input = input
+    history = history or []
+    if len(history) != 0:
+        input = "\n".join(["User:" + i[0]+"\n"+"Assistant:" + i[1] for i in history]) + "\n" + input
+        if len(input) > max_memory:
+            input = input[-max_memory:]
+    print(input)
+    print(len(input))
+    prompt = generate_prompt(input)
     inputs = tokenizer(prompt, return_tensors="pt")
     input_ids = inputs["input_ids"].to(device)
     generation_config = GenerationConfig(
@@ -138,58 +149,39 @@ def evaluate(
         )
     s = generation_output.sequences[0]
     output = tokenizer.decode(s)
-    return output.split("### Response:")[1].strip()
+    output = output.split("### Response:")[1].strip()
+    output = output.replace("Belle", "Vicuna")
+    if 'User:' in output:
+        output = output.split("User:")[0]
+    history.append((now_input, output))
+    print(history)
+    return history, history
 
-
-
-
-gr.Interface(
-    fn=evaluate,
+chatbot = gr.Chatbot().style(color_map=("green", "pink"))
+demo = gr.Interface(
+    fn=interaction,
     inputs=[
         gr.components.Textbox(
             lines=2, label="Input", placeholder="Tell me about alpacas."
         ),
-        gr.components.Slider(minimum=0, maximum=1, value=0.1, label="Temperature"),
-        gr.components.Slider(minimum=0, maximum=1, value=0.75, label="Top p"),
-        gr.components.Slider(minimum=0, maximum=100, step=1, value=40, label="Top k"),
-        gr.components.Slider(minimum=1, maximum=10, step=1, value=4, label="Beams Number"),
+        "state",
+        gr.components.Slider(minimum=0, maximum=1, value=1.0, label="Temperature"),
+        gr.components.Slider(minimum=0, maximum=1, value=0.9, label="Top p"),
+        gr.components.Slider(minimum=0, maximum=100, step=1, value=60, label="Top k"),
+        gr.components.Slider(minimum=1, maximum=5, step=1, value=2, label="Beams"),
         gr.components.Slider(
-            minimum=1, maximum=2000, step=1, value=256, label="Max New Tokens"
+            minimum=1, maximum=2000, step=1, value=128, label="Max new tokens"
         ),
         gr.components.Slider(
-            minimum=1, maximum=100, step=1, value=1, label="Min New Tokens"
+            minimum=0.1, maximum=10.0, step=0.1, value=2.0, label="Repetition Penalty"
         ),
         gr.components.Slider(
-            minimum=0.1, maximum=10.0, step=0.1, value=1.0, label="Repetition Penalty"
+            minimum=0, maximum=2000, step=1, value=256, label="max memory"
         ),
     ],
-    outputs=[
-        gr.inputs.Textbox(
-            lines=15,
-            label="Output",
-        )
-    ],
+    outputs=[chatbot, "state"],
+    allow_flagging="auto",
     title="广州地铁机器人",
     description="可以进行开放领域问答，可以根据外部API进行广州地铁换乘查询，车票查询，设施查询，车站时间查询等",
-).queue().launch(share=True)
-
-
-if __name__ == "__main__":
-    # testing code for readme
-    metra_instruct = "扮演广州地铁机器人悠悠，把客户问题转化为API调用指令"
-    for instruction, input in [
-        # ("用一句话描述地球为什么是独一无二的。", None),
-        # ("红楼梦后四十回是曹雪芹写的吗？为什么",None),
-        # ("根据给定的年份，计算该年是否为闰年。\\n\n\\n1996\\n", None),
-        (metra_instruct, "客户：列出广州地铁三号线的车站\n悠悠："),
-        (metra_instruct, "客户：汉溪长隆站最早几点钟能有车？\n悠悠：")
-        
-    ]:
-        print("Instruction:", instruction)
-        print("Input:", input)
-        print("Response:", evaluate(instruction,input))
-        print()
-
-
-
-
+)
+demo.queue().launch(share=True, inbrowser=True)
