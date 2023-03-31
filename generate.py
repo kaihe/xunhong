@@ -174,21 +174,21 @@ gr.Interface(
 ).queue().launch(share=True)
 
 
-# if __name__ == "__main__":
-#     # testing code for readme
-#     metra_instruct = "扮演广州地铁机器人悠悠，如实地回答用户的问题。以下这些信息需要借助相应的API进行查询，生成响应的API调用程序返回给客户：\n地铁班次时间->query_station_time(type, station_name)，\n列出某条线路全部车站->list_metra_line(line_name), \n换乘路线->\n票价查询->\n地铁设施查询->query_device(station_name)\n其他的开放领域问题要如实回答，不能谈论政治相关的话题。"
-#     for instruction, input in [
-#         # ("用一句话描述地球为什么是独一无二的。", None),
-#         # ("红楼梦后四十回是曹雪芹写的吗？为什么",None),
-#         # ("根据给定的年份，计算该年是否为闰年。\\n\n\\n1996\\n", None),
-#         (metra_instruct, "客户：列出广州地铁三号线的车站\n悠悠："),
-#         (metra_instruct, "客户：汉溪长隆站最早几点钟能有车？\n悠悠：")
+if __name__ == "__main__":
+    # testing code for readme
+    metra_instruct = "扮演广州地铁机器人悠悠，把客户问题转化为API调用指令"
+    for instruction, input in [
+        # ("用一句话描述地球为什么是独一无二的。", None),
+        # ("红楼梦后四十回是曹雪芹写的吗？为什么",None),
+        # ("根据给定的年份，计算该年是否为闰年。\\n\n\\n1996\\n", None),
+        (metra_instruct, "客户：列出广州地铁三号线的车站\n悠悠："),
+        (metra_instruct, "客户：汉溪长隆站最早几点钟能有车？\n悠悠：")
         
-#     ]:
-#         print("Instruction:", instruction)
-#         print("Input:", input)
-#         print("Response:", evaluate(instruction,input))
-#         print()
+    ]:
+        print("Instruction:", instruction)
+        print("Input:", input)
+        print("Response:", evaluate(instruction,input))
+        print()
 
 
 
