@@ -7,7 +7,6 @@ flagged
 chat
 quantize
 adapters/*
-cached_datasets/*
-sample/*
+raw_data/*
+train_data/*
 transformers/*
-transformers.zip
