@@ -82,24 +82,18 @@ else:
         device_map={"": device},
     )
 
-def generate_prompt(instruction, input=None):
-    if input:
-        return f"""The following is a conversation between an AI assistant called Assistant and a human user called User.
+def generate_prompt(input=None):
+
+    return f"""Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
 
 ### Instruction:
-{instruction}
+扮演广州地铁机器人悠悠，把客户问题转化为API调用指令
 
 ### Input:
 {input}
 
 ### Response:"""
-    else:
-        return f"""The following is a conversation between an AI assistant called Assistant and a human user called User.
 
-### Instruction:
-{instruction}
-
-### Response:"""
 
 if not LOAD_8BIT:
     model.half()  # seems to fix bugs for some users.
@@ -123,7 +117,7 @@ def interaction(
     now_input = input
     history = history or []
     if len(history) != 0:
-        input = "\n".join(["User:" + i[0]+"\n"+"Assistant:" + i[1] for i in history]) + "\n" + input
+        input = "\n".join(["客户：" + i[0]+"\n"+"悠悠：" + i[1] for i in history]) + "\n" + input + "\n" + "悠悠："
         if len(input) > max_memory:
             input = input[-max_memory:]
     print(input)
