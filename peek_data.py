@@ -14,6 +14,8 @@ def his_len():
 
     import matplotlib.pyplot as plt
 
+    print('frac of lower than 256: ', len([d for d in prompt_size if d<256])/len(prompt_size))
+
     plt.hist(prompt_size, bins=20)
     plt.show()
 
