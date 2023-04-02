@@ -9,7 +9,6 @@ import os
 from template import generate_prompt
 from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig
 from metra_api import MetraData
-
 metra_api = MetraData(reload=False)
 
 
@@ -123,7 +122,9 @@ def evaluate(
     s = generation_output.sequences[0]
     output = tokenizer.decode(s)
 
-    output = metra_api.proceed_api_call(output)
+    bot_line = output.split('悠悠：')[-1]
+
+    output = metra_api.proceed_api_call(bot_line)
     return output
 
 
@@ -150,7 +151,7 @@ if __name__ == "__main__":
         "客户：人生的意义是什么？\n悠悠：",   
         "客户：什么是二律背反？\n悠悠：",         
     ]:
-        print(evaluate(input))
+        print(input+evaluate(input))
         print('-------------')
 
 

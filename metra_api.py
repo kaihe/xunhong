@@ -1,6 +1,6 @@
 import json
 import random, pickle
-import os
+import os,re
 import pandas as pd
 import requests
 from collections import defaultdict
@@ -206,40 +206,42 @@ class MetraData:
     
     
     def proceed_api_call(self, api_str):
-        if '，' in api_str:
-            api_strs = api_str.split('，')
-            results = [self._proceed_api_call(s) for s in api_strs]
-            text = results[0]
-            for r in results[1:]:
-                if r[-1] in ['，','。']:
-                    text += r
-                else:
-                    text += '，'+r
-            return text
-        else:
-            return self._proceed_api_call(api_str)
+        # find func call pattern
+        p = f'({CALL_API}[\w|_]*\([^()]*\))'
+        matched = re.findall(p, api_str)
+
+        ans = api_str
+        for func_str in matched:
+            api_result = self._proceed_api_call(func_str.replace(CALL_API,''))
+            ans = ans.replace(func_str, api_result)
+
+        return ans
+
+        # if '，' in api_str:
+        #     api_strs = api_str.split('，')
+        #     results = [self._proceed_api_call(s) for s in api_strs]
+        #     text = results[0]
+        #     for r in results[1:]:
+        #         if r[-1] in ['，','。']:
+        #             text += r
+        #         else:
+        #             text += '，'+r
+        #     return text
+        # else:
+        #     return self._proceed_api_call(api_str)
 
     def _proceed_api_call(self, api_str):
-        if CALL_API in api_str:
-            api_str = api_str.replace(CALL_API, '')
-            if '：' in api_str:
-                role, body = api_str.split('：')
-                ans = eval(f'self.{body}')
-                return f'{role}：'+ans
-            else:
-                return eval(f'self.{api_str}')
-        else:
-            return api_str
+        return eval(f'self.{api_str}')
 
 if __name__ == '__main__':
     data = MetraData(reload=False)
     test_calls = [
+        "需要调用外部api来回答这个问题,query_device(station_name='钟落潭', device_name='时装饰物')，需要调用外部api来回答这个问题,query_device(station_name='钟落潭', device_name='其他')",
+        "需要调用外部api来回答这个问题,query_station_time(type='startTime', station_name='猎德大桥南')，需要调用外部api来回答这个问题,query_station_time(type='endTime', station_name='猎德大桥南')",
         "需要调用外部api来回答这个问题,list_line_stations(line_name='三号线')",
         "需要调用外部api来回答这个问题,query_station_time(type='startTime', station_name='汉溪长隆')",
         "需要调用外部api来回答这个问题,query_route_time(type='startTime', from_station='同济路', to_station='燕塘')",
-        "需要调用外部api来回答这个问题,query_station_time(type='startTime', station_name='猎德大桥南')，需要调用外部api来回答这个问题,query_station_time(type='endTime', station_name='猎德大桥南')",
         "需要调用外部api来回答这个问题,query_device(station_name='峻泰路', device_name='自动柜员机')",
-        "需要调用外部api来回答这个问题,query_device(station_name='钟落潭', device_name='时装饰物')，需要调用外部api来回答这个问题,query_device(station_name='钟落潭', device_name='其他')"
     ]
 
     for s in test_calls:

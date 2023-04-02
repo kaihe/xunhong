@@ -6,7 +6,8 @@ import gradio as gr
 import argparse
 import warnings
 import os
-
+from metra_api import MetraData
+metra_api = MetraData(reload=False)
 
 assert (
     "LlamaTokenizer" in transformers._import_structure["models.llama"]
@@ -82,18 +83,6 @@ else:
         device_map={"": device},
     )
 
-def generate_prompt(input=None):
-
-    return f"""Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request.
-
-### Instruction:
-扮演广州地铁机器人悠悠，把客户问题转化为API调用指令
-
-### Input:
-{input}
-
-### Response:"""
-
 
 if not LOAD_8BIT:
     model.half()  # seems to fix bugs for some users.
@@ -120,10 +109,8 @@ def interaction(
         input = "\n".join(["客户：" + i[0]+"\n"+"悠悠：" + i[1] for i in history]) + "\n" + input + "\n" + "悠悠："
         if len(input) > max_memory:
             input = input[-max_memory:]
-    print(input)
-    print(len(input))
-    prompt = generate_prompt(input)
-    inputs = tokenizer(prompt, return_tensors="pt")
+
+    inputs = tokenizer(input, return_tensors="pt")
     input_ids = inputs["input_ids"].to(device)
     generation_config = GenerationConfig(
         temperature=temperature,
@@ -143,12 +130,12 @@ def interaction(
         )
     s = generation_output.sequences[0]
     output = tokenizer.decode(s)
-    output = output.split("### Response:")[1].strip()
-    output = output.replace("Belle", "Vicuna")
-    if 'User:' in output:
-        output = output.split("User:")[0]
-    history.append((now_input, output))
-    print(history)
+
+    bot_line = output.split('\n')[-1]
+    history.append((now_input, metra_api.proceed_api_call(bot_line)))
+    print('客户：'+now_input)
+    print(bot_line)
+    print('-----')
     return history, history
 
 chatbot = gr.Chatbot().style(color_map=("green", "pink"))
