@@ -23,32 +23,27 @@ LOAD_8BIT = True
 BASE_MODEL = args.model_path
 LORA_WEIGHTS = args.lora_path
 
-if not os.path.exists(os.path.join(args.lora_path, 'adapter_config.json')):
-    import shutil
-    shutil.copyfile('config-sample/adapter_config.json', os.path.join(args.lora_path, 'adapter_config.json'))
-
-lora_bin_path = os.path.join(args.lora_path, "adapter_model.bin")
-print(lora_bin_path)
-if not os.path.exists(lora_bin_path):
-    pytorch_bin_path = os.path.join(args.lora_path, "pytorch_model.bin")
-    print(pytorch_bin_path)
-    if os.path.exists(pytorch_bin_path):
-        os.rename(pytorch_bin_path, lora_bin_path)
-        warnings.warn("The file name of the lora checkpoint'pytorch_model.bin' is replaced with 'adapter_model.bin'")
-    else:
-        assert ('Checkpoint is not Found!')
 if torch.cuda.is_available():
     device = "cuda"
 else:
     device = "cpu"
 
-try:
-    if torch.backends.mps.is_available():
-        device = "mps"
-except:
-    pass
+def load_model(lora_path):
 
-if device == "cuda":
+    if not os.path.exists(os.path.join(lora_path, 'adapter_config.json')):
+        import shutil
+        shutil.copyfile('config-sample/adapter_config.json', os.path.join(lora_path, 'adapter_config.json'))
+
+    lora_bin_path = os.path.join(lora_path, "adapter_model.bin")
+    if not os.path.exists(lora_bin_path):
+        pytorch_bin_path = os.path.join(lora_path, "pytorch_model.bin")
+        if os.path.exists(pytorch_bin_path):
+            os.rename(pytorch_bin_path, lora_bin_path)
+            warnings.warn("The file name of the lora checkpoint'pytorch_model.bin' is replaced with 'adapter_model.bin'")
+        else:
+            assert ('Checkpoint is not Found!')
+
+    
     model = LlamaForCausalLM.from_pretrained(
         BASE_MODEL,
         load_in_8bit=LOAD_8BIT,
@@ -61,37 +56,18 @@ if device == "cuda":
         torch_dtype=torch.float16,
         device_map={'': 0}
     )
-elif device == "mps":
-    model = LlamaForCausalLM.from_pretrained(
-        BASE_MODEL,
-        device_map={"": device},
-        torch_dtype=torch.float16,
-    )
-    model = PeftModel.from_pretrained(
-        model,
-        LORA_WEIGHTS,
-        device_map={"": device},
-        torch_dtype=torch.float16,
-    )
-else:
-    model = LlamaForCausalLM.from_pretrained(
-        BASE_MODEL, device_map={"": device}, low_cpu_mem_usage=True
-    )
-    model = PeftModel.from_pretrained(
-        model,
-        LORA_WEIGHTS,
-        device_map={"": device},
-    )
 
-if not LOAD_8BIT:
-    model.half()  # seems to fix bugs for some users.
+    if not LOAD_8BIT:
+        model.half()  # seems to fix bugs for some users.
 
-model.eval()
-if torch.__version__ >= "2" and sys.platform != "win32":
-    model = torch.compile(model)
+    model.eval()
+    if torch.__version__ >= "2" and sys.platform != "win32":
+        model = torch.compile(model)
 
+    return model
 
 def evaluate(
+    model,
     input,
     temperature=0.1,
     top_p=0.75,
@@ -124,12 +100,13 @@ def evaluate(
 
     bot_line = output.split('悠悠：')[-1]
     output = metra_api.proceed_api_call(bot_line)
-    return output
+
+    return output, bot_line
 
 
 
 if __name__ == "__main__":
-    # testing code for readme
+    model = load_model(args.lora_path)
     for input in [
         "客户：江泽民是个好官吗？\n悠悠：",   
         "客户：用一句话描述地球为什么是独一无二的。\n悠悠：", 
@@ -150,7 +127,9 @@ if __name__ == "__main__":
         "客户：人生的意义是什么？\n悠悠：",   
         "客户：什么是二律背反？\n悠悠：",         
     ]:
-        print(input+evaluate(input))
+        output, bot_line = evaluate(model, input)
+        print(input+output)
+        print('org: '+bot_line)
         print('-------------')
 
 
