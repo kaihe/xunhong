@@ -26,6 +26,10 @@ LOAD_8BIT = True
 BASE_MODEL = args.model_path
 LORA_WEIGHTS = args.lora_path
 
+if not os.path.exists(os.path.join(args.lora_path, 'adapter_config.json')):
+    import shutil
+    shutil.copyfile('config-sample/adapter_config.json', os.path.join(args.lora_path, 'adapter_config.json'))
+
 # fix the path for local checkpoint
 lora_bin_path = os.path.join(args.lora_path, "adapter_model.bin")
 print(lora_bin_path)
