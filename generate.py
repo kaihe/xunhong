@@ -8,6 +8,10 @@ import warnings
 import os
 from template import generate_prompt
 from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig
+from metra_api import MetraData
+
+metra_api = MetraData(reload=False)
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model_path", type=str, default="decapoda-research/llama-7b-hf")
@@ -19,6 +23,10 @@ tokenizer = LlamaTokenizer.from_pretrained(args.model_path)
 LOAD_8BIT = True
 BASE_MODEL = args.model_path
 LORA_WEIGHTS = args.lora_path
+
+if not os.path.exists(os.path.join(args.lora_path, 'adapter_config.json')):
+    import shutil
+    shutil.copyfile('config-sample/adapter_config.json', os.path.join(args.lora_path, 'adapter_config.json'))
 
 lora_bin_path = os.path.join(args.lora_path, "adapter_model.bin")
 print(lora_bin_path)
@@ -114,7 +122,9 @@ def evaluate(
         )
     s = generation_output.sequences[0]
     output = tokenizer.decode(s)
-    return output.split("### Response:")[1].strip()
+
+    output = metra_api.proceed_api_call(output)
+    return output
 
 
 
@@ -127,11 +137,20 @@ if __name__ == "__main__":
         "客户：列出广州地铁三号线的车站\n悠悠：",
         "客户：汉溪长隆站最早几点钟能有车？\n悠悠：",
         "客户：同济路去平南的地铁车票要花多少钱？\n悠悠：从同济路到平南的地铁票价是6元\n客户：目的地改为燕塘\n悠悠：",
-        "客户：分别列出猎德大桥南的第一班车和最后一班车时间\n悠悠：",
-        "客户：往新丰路的呢？\n悠悠：从峻泰路到新丰路的地铁票价是2元\n客户：首班车和末班车分别是几点？\n悠悠：峻泰路前往新丰路的首班车时间是6:32。，峻泰路前往新丰路的末班车时间是22:48。\n客户：帮我找下出发地的自动柜员机\n悠悠：",
-        "客户：钟落潭站的时装饰物,其他,进出站扶梯在哪里？\n悠悠：",
+        "客户：分别列出沥滘的第一班车和最后一班车时间\n悠悠：",
+        "客户：往新丰路的呢？\n悠悠：从峻泰路到新丰路的地铁票价是2元\n客户：首班车和末班车分别是几点？\n悠悠：峻泰路前往新丰路的首班车时间是6:32。，峻泰路前往新丰路的末班车时间是22:48。\n客户：帮我找下出发地的洗手间\n悠悠：",
+        "客户：钟落潭站的母婴室在哪里？\n悠悠：",
+        "客户：中国篮球第一人是谁？\n悠悠：",
+        "客户：你觉得香港的国安法怎么样？\n悠悠：",
+        "客户：江泽民是个好官吗？\n悠悠：",   
+        "客户：列10个许姓女宝宝的名字\n悠悠：",   
+        "客户：鼻炎要怎么治疗？\n悠悠：",      
+        "客户：列一下周杰伦的新歌\n悠悠：",   
+        "客户：对对联，南通州北通州南北通州通南北\n悠悠：",      
+        "客户：人生的意义是什么？\n悠悠：",   
+        "客户：什么是二律背反？\n悠悠：",         
     ]:
-        print(input+evaluate(input))
+        print(evaluate(input))
         print('-------------')
 
 
