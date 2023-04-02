@@ -215,6 +215,11 @@ class MetraData:
             api_result = self._proceed_api_call(func_str.replace(CALL_API,''))
             ans = ans.replace(func_str, api_result)
 
+        '''
+        因为答案的format没考虑周全，训练数据中混入了格式混乱的数据。需要在这里硬处理一下。治本的方法是重构训练数据
+        '''
+        ans = ans.replace('。，','。')
+
         return ans
 
         # if '，' in api_str:
