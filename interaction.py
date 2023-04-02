@@ -132,9 +132,11 @@ def interaction(
     output = tokenizer.decode(s)
 
     bot_line = output.split('\n')[-1]
-    history.append((now_input, metra_api.proceed_api_call(bot_line)))
+    bot_ans = metra_api.proceed_api_call(bot_line)
+    history.append((now_input, bot_ans))
     print('客户：'+now_input)
-    print(bot_line)
+    print('debug: '+bot_line)
+    print(bot_ans)
     print('-----')
     return history, history
 

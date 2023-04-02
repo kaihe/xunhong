@@ -8,6 +8,32 @@ from collections import defaultdict
 API_ERROR = 'data not found in API!!'
 CALL_API = '需要调用外部api来回答这个问题,'
 
+# 干掉了一些奇怪的设施
+device_config = {
+    '羊城通充值点':['地铁卡充值的地方','地铁卡充值点'],
+    '楼梯升降机':['升降机','电梯'],
+    '专用电梯':[],
+    '卫生间':['洗手间','厕所','公厕','男厕所','女厕所'],
+    '自动柜员机':['贩卖机'],
+    '自动照相机':['自动照相机','照相机','照相点'],
+    '自动售卖机':['自动售卖机'],
+    '优惠券打印机':[],
+    '手机充电机':['手机充电的地方'],
+    '便利店':[],
+    '面包西饼':['面包西饼店','面包店','西饼店'],
+    '糖果小吃':['糖果店','糖果小吃店','小吃店'],
+    '书报文具':['报刊亭'],
+    '餐饮':['吃饭的地方','饭店'],
+    '盲道':[],
+    '自助售卡充值机':['售卡机'],
+    '母婴室':[],
+    '轮椅坡道':['无障碍通道'],
+    '出站扶梯':[],
+    '进站扶梯':[],
+    '无障碍卫生间':[],
+    '第三卫生间':[]
+}
+
 class MetraData:
 
     def __init__(self, reload=True) -> None:
@@ -37,6 +63,14 @@ class MetraData:
                 pickle.dump([self.station_dict, self.line_dict, self.line_station_names, self.station_directions, self.device_dict], fout)
         else:
             self.station_dict, self.line_dict, self.line_station_names, self.station_directions, self.device_dict = pickle.load(open('config-sample/metra_obj.pickle', 'rb'))
+            
+            # remap device alias, remove unusual devices
+            device_dict = {}
+            for k, v in device_config.items():
+                device_dict[k] = self.device_dict[k]
+                for _k in v:
+                    device_dict[_k] = self.device_dict[k]
+            self.device_dict = device_dict
 
         self.station_id_dict = {v:k for k, v in self.station_dict.items()}
 
@@ -129,7 +163,7 @@ class MetraData:
 
         _facelet = '首班车' if type == 'startTime' else '末班车'
         _time = self._query_time(type, from_station, to_station)
-        txt = f"{from_station}前往{to_station}的{_facelet}时间是{_time}。"
+        txt = f"{from_station}前往{to_station}的{_facelet}时间是{_time}"
         return txt
 
     def query_device(self, device_name, station_name):
@@ -216,7 +250,7 @@ class MetraData:
             ans = ans.replace(func_str, api_result)
 
         '''
-        因为答案的format没考虑周全，训练数据中混入了格式混乱的数据。需要在这里硬处理一下。治本的方法是重构训练数据
+        因为答案的format没考虑周全，训练数据中混入了格式混乱的数据。需要在这里硬处理一下。治本的方法把API返回的文本和template文案约定好标点符号的使用
         '''
         ans = ans.replace('。，','。')
 
@@ -240,20 +274,20 @@ class MetraData:
 
 if __name__ == '__main__':
     data = MetraData(reload=False)
-    test_calls = [
-        "需要调用外部api来回答这个问题,query_device(station_name='钟落潭', device_name='时装饰物')，需要调用外部api来回答这个问题,query_device(station_name='钟落潭', device_name='其他')",
-        "需要调用外部api来回答这个问题,query_station_time(type='startTime', station_name='猎德大桥南')，需要调用外部api来回答这个问题,query_station_time(type='endTime', station_name='猎德大桥南')",
-        "需要调用外部api来回答这个问题,list_line_stations(line_name='三号线')",
-        "需要调用外部api来回答这个问题,query_station_time(type='startTime', station_name='汉溪长隆')",
-        "需要调用外部api来回答这个问题,query_route_time(type='startTime', from_station='同济路', to_station='燕塘')",
-        "需要调用外部api来回答这个问题,query_device(station_name='峻泰路', device_name='自动柜员机')",
-    ]
+    # test_calls = [
+    #     "需要调用外部api来回答这个问题,query_device(station_name='钟落潭', device_name='时装饰物')，需要调用外部api来回答这个问题,query_device(station_name='钟落潭', device_name='其他')",
+    #     "需要调用外部api来回答这个问题,query_station_time(type='startTime', station_name='猎德大桥南')，需要调用外部api来回答这个问题,query_station_time(type='endTime', station_name='猎德大桥南')",
+    #     "需要调用外部api来回答这个问题,list_line_stations(line_name='三号线')",
+    #     "需要调用外部api来回答这个问题,query_station_time(type='startTime', station_name='汉溪长隆')",
+    #     "需要调用外部api来回答这个问题,query_route_time(type='startTime', from_station='同济路', to_station='燕塘')",
+    #     "需要调用外部api来回答这个问题,query_device(station_name='峻泰路', device_name='自动柜员机')",
+    # ]
 
-    for s in test_calls:
-        print(s)
-        print(data.proceed_api_call(s))
-        print('----------')
+    # for s in test_calls:
+    #     print(s)
+    #     print(data.proceed_api_call(s))
+    #     print('----------')
     
-
+    print(data.device_dict.keys())
     
     
