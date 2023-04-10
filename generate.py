@@ -1,70 +1,94 @@
 import sys
 import torch
-from peft import PeftModel
+from peft import PeftModel, PeftModelForCausalLM, LoraConfig
 import transformers
-# import gradio as gr
+import gradio as gr
 import argparse
 import warnings
 import os
-from template import generate_prompt
-from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig
 from metra_api import MetraData
 metra_api = MetraData(reload=False)
 
+assert (
+    "LlamaTokenizer" in transformers._import_structure["models.llama"]
+), "LLaMA is now in HuggingFace's main branch.\nPlease reinstall it: pip uninstall transformers && pip install git+https://github.com/huggingface/transformers.git"
+from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--model_path", type=str, default="decapoda-research/llama-7b-hf")
-parser.add_argument("--lora_path", type=str, default="./lora-Vicuna/checkpoint-3800")
+parser.add_argument("--model_path", type=str, default="/model/13B_hf")
+parser.add_argument("--lora_path", type=str, default="/home/tianjie/Documents/DialogueGeneration/trl/checkpoint/checkpoint-3000")
+parser.add_argument("--use_typewriter", type=int, default=1)
+parser.add_argument("--use_local", type=int, default=1)
 args = parser.parse_args()
-
+print(args)
 tokenizer = LlamaTokenizer.from_pretrained(args.model_path)
 
 LOAD_8BIT = True
 BASE_MODEL = args.model_path
 LORA_WEIGHTS = args.lora_path
 
+
+# fix the path for local checkpoint
+lora_bin_path = os.path.join(args.lora_path, "adapter_model.bin")
+print(lora_bin_path)
+if not os.path.exists(lora_bin_path) and args.use_local:
+    pytorch_bin_path = os.path.join(args.lora_path, "pytorch_model.bin")
+    print(pytorch_bin_path)
+    if os.path.exists(pytorch_bin_path):
+        os.rename(pytorch_bin_path, lora_bin_path)
+        warnings.warn(
+            "The file name of the lora checkpoint'pytorch_model.bin' is replaced with 'adapter_model.bin'"
+        )
+    else:
+        assert ('Checkpoint is not Found!')
+
+    if not os.path.exists(os.path.join(args.lora_path, 'adapter_config.json')):
+        import shutil
+        shutil.copyfile('config-sample/adapter_config.json', os.path.join(args.lora_path, 'adapter_config.json'))
+
+
 if torch.cuda.is_available():
     device = "cuda"
 else:
     device = "cpu"
 
-def load_model(lora_path):
+try:
+    if torch.backends.mps.is_available():
+        device = "mps"
+except:
+    pass
 
-    if not os.path.exists(os.path.join(lora_path, 'adapter_config.json')):
-        import shutil
-        shutil.copyfile('config-sample/adapter_config.json', os.path.join(lora_path, 'adapter_config.json'))
-
-    lora_bin_path = os.path.join(lora_path, "adapter_model.bin")
-    if not os.path.exists(lora_bin_path):
-        pytorch_bin_path = os.path.join(lora_path, "pytorch_model.bin")
-        if os.path.exists(pytorch_bin_path):
-            os.rename(pytorch_bin_path, lora_bin_path)
-            warnings.warn("The file name of the lora checkpoint'pytorch_model.bin' is replaced with 'adapter_model.bin'")
-        else:
-            assert ('Checkpoint is not Found!')
-
-    
+if device == "cuda":
     model = LlamaForCausalLM.from_pretrained(
         BASE_MODEL,
         load_in_8bit=LOAD_8BIT,
         torch_dtype=torch.float16,
-        device_map="auto",
+        device_map={"": 0},
+    )
+    model = PeftModel.from_pretrained(
+        model, LORA_WEIGHTS, torch_dtype=torch.float16, device_map={"": 0}
+    )
+elif device == "mps":
+    model = LlamaForCausalLM.from_pretrained(
+        BASE_MODEL,
+        device_map={"": device},
+        torch_dtype=torch.float16,
     )
     model = PeftModel.from_pretrained(
         model,
         LORA_WEIGHTS,
+        device_map={"": device},
         torch_dtype=torch.float16,
-        device_map={'': 0}
     )
-
-    if not LOAD_8BIT:
-        model.half()  # seems to fix bugs for some users.
-
-    model.eval()
-    if torch.__version__ >= "2" and sys.platform != "win32":
-        model = torch.compile(model)
-
-    return model
+else:
+    model = LlamaForCausalLM.from_pretrained(
+        BASE_MODEL, device_map={"": device}, low_cpu_mem_usage=True
+    )
+    model = PeftModel.from_pretrained(
+        model,
+        LORA_WEIGHTS,
+        device_map={"": device},
+    )
 
 def evaluate(
     model,
@@ -106,7 +130,7 @@ def evaluate(
 
 
 if __name__ == "__main__":
-    model = load_model(args.lora_path)
+
     for input in [
         "客户：江泽民是个好官吗？\n悠悠：",   
         "客户：用一句话描述地球为什么是独一无二的。\n悠悠：", 
