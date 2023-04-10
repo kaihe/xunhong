@@ -137,7 +137,7 @@ def interaction(
 
     bot_line = output.split('\n')[-1]
     bot_ans = metra_api.proceed_api_call(bot_line)
-    history.append((now_input, bot_ans))
+    history.append(('客户：'+now_input, "悠悠："+bot_ans))
     print('客户：'+now_input)
     print('debug: '+bot_line)
     print(bot_ans)
