@@ -3,6 +3,8 @@ from typing import Optional, List
 from langchain.llms.utils import enforce_stop_tokens
 from transformers import AutoTokenizer, AutoModel
 import torch
+from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig
+
 
 DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 DEVICE_ID = "0" if torch.cuda.is_available() else None
@@ -17,7 +19,7 @@ def torch_gc():
 
 
 class ChatGLM(LLM):
-    max_token: int = 512
+    max_token: int = 100000
     temperature: float = 0.01
     top_p = 0.9
     history = []
@@ -49,31 +51,21 @@ class ChatGLM(LLM):
         return response
 
     def load_model(self, model_name_or_path: str = "THUDM/chatglm-6b"):
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            model_name_or_path,
-            trust_remote_code=True
-        )
-        if torch.cuda.is_available():
-            self.model = (
-                AutoModel.from_pretrained(
-                    model_name_or_path,
-                    trust_remote_code=True)
-                .half()
-                .cuda()
+        if model_name_or_path == 'chatglm':
+        
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                model_name_or_path,
+                trust_remote_code=True
             )
-        elif torch.backends.mps.is_available():
+            
             self.model = (
-                AutoModel.from_pretrained(
-                    model_name_or_path,
-                    trust_remote_code=True)
-                .float()
-                .to('mps')
+                AutoModel.from_pretrained("THUDM/chatglm-6b-int4",trust_remote_code=True)
+                .half().cuda()
             )
-        else:
-            self.model = (
-                AutoModel.from_pretrained(
-                    model_name_or_path,
-                    trust_remote_code=True)
-                .float()
-            )
+        elif model_name_or_path == 'llama':
+            model_name = 'decapoda-research/llama-7b-hf'
+            self.tokenizer = LlamaTokenizer.from_pretrained(model_name,add_eos_token=True)
+            self.tokenizer.pad_token_id = 0
+            self.model = LlamaForCausalLM.from_pretrained(model_name, load_in_8bit=True, device_map="auto")
+
         self.model = self.model.eval()
