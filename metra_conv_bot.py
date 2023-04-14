@@ -9,7 +9,7 @@ load_dotenv("./.env")
 from chain_bots.metra_tools import mtools
 from chain_bots.prompt import FORMAT_INSTRUCTIONS, PREFIX, SUFFIX
 from langchain.utilities import GoogleSearchAPIWrapper
-from chain_bots.chatglm_llm import ChatGLM, LlamaModel
+from chain_bots.chatglm_llm import ChatGLM, LlamaModel, BloomModel
 import torch
 
 search = GoogleSearchAPIWrapper()
@@ -29,7 +29,7 @@ def get_bot():
 
     # llm=OpenAI(temperature=0, max_tokens=512)
 
-    llm = LlamaModel()
+    llm = BloomModel()
 
     agent_chain = initialize_agent(tools, llm, agent=AgentType.CONVERSATIONAL_REACT_DESCRIPTION, verbose=True, memory=memory, agent_kwargs={'prefix':PREFIX, 'suffix':SUFFIX, 'format_instructions':FORMAT_INSTRUCTIONS})
 

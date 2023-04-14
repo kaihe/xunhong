@@ -4,7 +4,7 @@ from langchain.llms.utils import enforce_stop_tokens
 from transformers import AutoTokenizer, AutoModel
 import torch
 from transformers import LlamaTokenizer, LlamaForCausalLM, GenerationConfig
-
+from transformers import AutoTokenizer, TrainingArguments, Trainer, AutoModelForCausalLM, IntervalStrategy, BloomForCausalLM
 
 DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 DEVICE_ID = "0" if torch.cuda.is_available() else None
@@ -17,6 +17,38 @@ def torch_gc():
             torch.cuda.empty_cache()
             torch.cuda.ipc_collect()
 
+class BloomModel(LLM):
+    tokenizer: object = None
+    model: object = None
+    max_new_tokens:int = 512
+
+    def __init__(self, model_name='bigscience/bloom-1b1'):
+        super().__init__()
+        self.model = AutoTokenizer.from_pretrained(model_name, use_cache=True).cuda()
+        self.tokenizer = AutoModelForCausalLM.from_pretrained(model_name)
+
+    @property
+    def _llm_type(self) -> str:
+        return "bloom"
+    
+    def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
+        inputs = self.tokenizer(prompt, return_tensors="pt")
+        input_ids = inputs["input_ids"].to('cuda')
+
+        with torch.no_grad():
+            generation_output = self.model.generate(
+                input_ids=input_ids,
+                max_new_tokens=512
+            )
+
+        output = self.tokenizer.decode(generation_output[0])
+
+        torch_gc()
+        if stop is not None:
+            response = enforce_stop_tokens(output, stop)
+
+        return response
+
 class LlamaModel(LLM):
     tokenizer: object = None
     model: object = None
@@ -27,7 +59,8 @@ class LlamaModel(LLM):
         self.model = LlamaForCausalLM.from_pretrained(
             model_name,
             load_in_8bit=True,
-            torch_dtype=torch.float16
+            torch_dtype=torch.float16,
+            device_map='auto'
         ).cuda().eval()
         self.tokenizer = LlamaTokenizer.from_pretrained(model_name)
 
