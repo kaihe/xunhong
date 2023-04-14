@@ -30,7 +30,7 @@ def get_bot():
     # llm=OpenAI(temperature=0, max_tokens=512)
 
     llm = ChatGLM()
-    llm.load_model()
+    llm.load_model(model_name_or_path='chatglm-6b-int4')
 
 
     agent_chain = initialize_agent(tools, llm, agent=AgentType.CONVERSATIONAL_REACT_DESCRIPTION, verbose=True, memory=memory, agent_kwargs={'prefix':PREFIX, 'suffix':SUFFIX, 'format_instructions':FORMAT_INSTRUCTIONS})
