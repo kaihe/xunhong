@@ -46,22 +46,9 @@ if __name__ == '__main__':
         fn=agent_chain.run,
         inputs=[
             gr.components.Textbox(
-                lines=2, label="Input", placeholder="Tell me about alpacas."
+                lines=2, label="Input", placeholder="请问什么可以帮您？"
             ),
-            "state",
-            gr.components.Slider(minimum=0, maximum=1, value=1.0, label="Temperature"),
-            gr.components.Slider(minimum=0, maximum=1, value=0.9, label="Top p"),
-            gr.components.Slider(minimum=0, maximum=100, step=1, value=60, label="Top k"),
-            gr.components.Slider(minimum=1, maximum=5, step=1, value=2, label="Beams"),
-            gr.components.Slider(
-                minimum=1, maximum=2000, step=1, value=128, label="Max new tokens"
-            ),
-            gr.components.Slider(
-                minimum=0.1, maximum=10.0, step=0.1, value=2.0, label="Repetition Penalty"
-            ),
-            gr.components.Slider(
-                minimum=0, maximum=2000, step=1, value=256, label="max memory"
-            ),
+            "state"
         ],
         outputs=[chatbot, "state"],
         allow_flagging="auto",
