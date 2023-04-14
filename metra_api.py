@@ -34,6 +34,11 @@ device_config = {
     '第三卫生间':[]
 }
 
+station_alias = {
+    '机场南（1号航站楼）':['机场南','机场','白云机场','白云机场1号航站楼','机场1号航站楼'],
+    '机场北（2号航站楼）':['机场北','白云机场2号航站楼', '机场2号航站楼']
+}
+
 class MetraData:
 
     def __init__(self, reload=True) -> None:
@@ -71,6 +76,22 @@ class MetraData:
                 for _k in v:
                     device_dict[_k] = self.device_dict[k]
             self.device_dict = device_dict
+
+            # map station alias
+            for k, v in station_alias.items():
+                _id = self.station_dict[k]
+                for alias in v:
+                    self.station_dict[alias] = _id
+
+            to_add = []
+            for k, _id in self.station_dict.items():
+                if k.endswith('站'):
+                    to_add.append((k[:-1], _id))
+                else:
+                    to_add.append((k+'站', _id))
+
+            for k, v in to_add:
+                self.station_dict[k] = v
 
         self.station_id_dict = {v:k for k, v in self.station_dict.items()}
 
@@ -116,7 +137,7 @@ class MetraData:
         if not line_name in self.line_station_names:
             return f"抱歉广州地铁没有{line_name}"
 
-    def _query_time(self, type, from_station, to_station):
+    def _query_time(self, from_station, to_station):
         from_id = self.station_dict[from_station]
         to_id = self.station_dict[to_station]
         _url = f'{self.url_base}/rest/mtr/serviceTimes?stationId={from_id}&toStationId={to_id}'
@@ -124,7 +145,8 @@ class MetraData:
         service_time = requests.get(_url).json()['serviceTimes']
         service_time = [s for s in service_time if s['stationId'] == from_id]
         try:
-            return service_time[0][type]
+            return service_time[0]['startTime'], service_time[0]['endTime']
+            
         except (KeyError,IndexError):
             return API_ERROR
 
@@ -154,19 +176,18 @@ class MetraData:
 
         return '。'.join(txt_list)+'。'
 
-    def query_route_time(self, type, from_station, to_station):
+    def query_route_time(self, from_station, to_station):
         if self._check_station(from_station):
             return self._check_station(from_station)
         
         if self._check_station(to_station):
             return self._check_station(to_station)
 
-        _facelet = '首班车' if type == 'startTime' else '末班车'
-        _time = self._query_time(type, from_station, to_station)
-        txt = f"{from_station}前往{to_station}的{_facelet}时间是{_time}"
+        start_time, end_time = self._query_time(from_station, to_station)
+        txt = f"{from_station}前往{to_station}的首班车时间是{start_time},末班车时间是{end_time}"
         return txt
 
-    def query_device(self, device_name, station_name):
+    def query_device(self, station_name, device_name):
         if self._check_station(station_name):
             return self._check_station(station_name)
         
@@ -233,8 +254,8 @@ class MetraData:
             return API_ERROR
     
 
-    def query_station_nearby(self, args):
-        _url = f'{self.url_base}/rest/mtr/near??location={args["location"]}'
+    def query_station_nearby(self, location):
+        _url = f'{self.url_base}/rest/mtr/near?location={location}'
         desc = requests.get(_url).json()
         return desc
     
@@ -274,20 +295,9 @@ class MetraData:
 
 if __name__ == '__main__':
     data = MetraData(reload=False)
-    # test_calls = [
-    #     "需要调用外部api来回答这个问题,query_device(station_name='钟落潭', device_name='时装饰物')，需要调用外部api来回答这个问题,query_device(station_name='钟落潭', device_name='其他')",
-    #     "需要调用外部api来回答这个问题,query_station_time(type='startTime', station_name='猎德大桥南')，需要调用外部api来回答这个问题,query_station_time(type='endTime', station_name='猎德大桥南')",
-    #     "需要调用外部api来回答这个问题,list_line_stations(line_name='三号线')",
-    #     "需要调用外部api来回答这个问题,query_station_time(type='startTime', station_name='汉溪长隆')",
-    #     "需要调用外部api来回答这个问题,query_route_time(type='startTime', from_station='同济路', to_station='燕塘')",
-    #     "需要调用外部api来回答这个问题,query_device(station_name='峻泰路', device_name='自动柜员机')",
-    # ]
-
-    # for s in test_calls:
-    #     print(s)
-    #     print(data.proceed_api_call(s))
-    #     print('----------')
     
-    print(data.device_dict.keys())
+    
+    result = data.query_station_nearby('高价收废品')
+    print(result)
     
     
