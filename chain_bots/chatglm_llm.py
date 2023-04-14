@@ -22,13 +22,12 @@ class LlamaModel(LLM):
     model: object = None
     max_new_tokens:int = 512
 
-    def __init__(self, model_name='kuleshov/llama-7b-4bit'):
+    def __init__(self, model_name='decapoda-research/llama-7b-hf'):
         super().__init__()
         self.model = LlamaForCausalLM.from_pretrained(
             model_name,
             load_in_8bit=True,
-            torch_dtype=torch.float16,
-            device_map={"": 0},
+            torch_dtype=torch.float16
         ).cuda().eval()
         self.tokenizer = LlamaTokenizer.from_pretrained(model_name)
 
@@ -37,7 +36,7 @@ class LlamaModel(LLM):
         return "llama"
     
     def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
-        inputs = self.tokenizer(input, return_tensors="pt")
+        inputs = self.tokenizer(prompt, return_tensors="pt")
         input_ids = inputs["input_ids"].to('cuda')
 
         generation_output = self.model.generate(
