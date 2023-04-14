@@ -9,10 +9,9 @@ load_dotenv("./.env")
 from chain_bots.metra_tools import mtools
 from chain_bots.prompt import FORMAT_INSTRUCTIONS, PREFIX, SUFFIX
 from langchain.utilities import GoogleSearchAPIWrapper
-from chatglm_llm import ChatGLM
+from chain_bots.chatglm_llm import ChatGLM
 import torch
 
-wikipedia = WikipediaAPIWrapper()
 search = GoogleSearchAPIWrapper()
 
 

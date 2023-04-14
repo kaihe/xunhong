@@ -10,3 +10,4 @@ appdirs
 langchain
 openai
 python-dotenv
+cpm_kernels

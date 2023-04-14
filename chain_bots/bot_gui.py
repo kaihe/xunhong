@@ -4,7 +4,7 @@ from PyQt5 import QtGui,QtCore, QtWidgets
 from PyQt5.QtWidgets import QApplication, QPushButton, QMainWindow, QDialog, QGroupBox, QHBoxLayout, QVBoxLayout, QTextEdit, QLineEdit
 
 from PyQt5.QtGui import QPixmap
-from chain_bots.metra_conv_bot import get_bot
+from metra_conv_bot import get_bot
 
 class window(QDialog):
     def __init__(self):
