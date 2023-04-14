@@ -12,3 +12,4 @@ train_data/*
 transformers/*
 metra_data_generator/*
 .env
+*.egg-info
