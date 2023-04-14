@@ -24,8 +24,8 @@ class BloomModel(LLM):
 
     def __init__(self, model_name='bigscience/bloom-1b1'):
         super().__init__()
-        self.model = AutoTokenizer.from_pretrained(model_name, use_cache=True).cuda()
-        self.tokenizer = AutoModelForCausalLM.from_pretrained(model_name)
+        self.tokenizer= AutoTokenizer.from_pretrained(model_name)
+        self.model  = AutoModelForCausalLM.from_pretrained(model_name, use_cache=True).cuda()
 
     @property
     def _llm_type(self) -> str:

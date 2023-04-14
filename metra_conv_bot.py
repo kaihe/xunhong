@@ -27,9 +27,7 @@ def get_bot():
 
     memory = ConversationBufferMemory(memory_key="chat_history")
 
-    # llm=OpenAI(temperature=0, max_tokens=512)
-
-    llm = BloomModel()
+    llm=OpenAI(temperature=0, max_tokens=512)
 
     agent_chain = initialize_agent(tools, llm, agent=AgentType.CONVERSATIONAL_REACT_DESCRIPTION, verbose=True, memory=memory, agent_kwargs={'prefix':PREFIX, 'suffix':SUFFIX, 'format_instructions':FORMAT_INSTRUCTIONS})
 
@@ -37,8 +35,37 @@ def get_bot():
 
 if __name__ == '__main__':
     agent_chain = get_bot()
+    # agent_chain.run(input="汉溪长隆到机场南的首班车是几点？")
+    # agent_chain.run(input="车票多少钱？")
+    # agent_chain.run(input="再列下换乘路线")
+    # agent_chain.run(input="华新汇附近的地铁站是哪个？")
+    import gradio as gr
 
-    agent_chain.run(input="汉溪长隆到机场南的首班车是几点？")
-    agent_chain.run(input="车票多少钱？")
-    agent_chain.run(input="再列下换乘路线")
-    agent_chain.run(input="华新汇附近的地铁站是哪个？")
+    chatbot = gr.Chatbot().style(color_map=("green", "pink"))
+    demo = gr.Interface(
+        fn=agent_chain.run,
+        inputs=[
+            gr.components.Textbox(
+                lines=2, label="Input", placeholder="Tell me about alpacas."
+            ),
+            "state",
+            gr.components.Slider(minimum=0, maximum=1, value=1.0, label="Temperature"),
+            gr.components.Slider(minimum=0, maximum=1, value=0.9, label="Top p"),
+            gr.components.Slider(minimum=0, maximum=100, step=1, value=60, label="Top k"),
+            gr.components.Slider(minimum=1, maximum=5, step=1, value=2, label="Beams"),
+            gr.components.Slider(
+                minimum=1, maximum=2000, step=1, value=128, label="Max new tokens"
+            ),
+            gr.components.Slider(
+                minimum=0.1, maximum=10.0, step=0.1, value=2.0, label="Repetition Penalty"
+            ),
+            gr.components.Slider(
+                minimum=0, maximum=2000, step=1, value=256, label="max memory"
+            ),
+        ],
+        outputs=[chatbot, "state"],
+        allow_flagging="auto",
+        title="广州地铁机器人",
+        description="可以进行开放领域问答，可以根据外部API进行广州地铁换乘查询，车票查询，设施查询，车站时间查询等",
+    )
+    demo.queue().launch(share=True, inbrowser=True)
