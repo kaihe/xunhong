@@ -17,6 +17,42 @@ def torch_gc():
             torch.cuda.empty_cache()
             torch.cuda.ipc_collect()
 
+class LlamaModel(LLM):
+    tokenizer: object = None
+    model: object = None
+    max_new_tokens:int = 512
+
+    def __init__(self, model_name='kuleshov/llama-7b-4bit'):
+        super().__init__()
+        self.model = LlamaForCausalLM.from_pretrained(
+            model_name,
+            load_in_8bit=True,
+            torch_dtype=torch.float16,
+            device_map={"": 0},
+        ).cuda().eval()
+        self.tokenizer = LlamaTokenizer.from_pretrained(model_name)
+
+    @property
+    def _llm_type(self) -> str:
+        return "llama"
+    
+    def _call(self, prompt: str, stop: Optional[List[str]] = None) -> str:
+        inputs = self.tokenizer(input, return_tensors="pt")
+        input_ids = inputs["input_ids"].to('cuda')
+
+        generation_output = self.model.generate(
+            input_ids=input_ids,
+            max_new_tokens=self.max_new_tokens
+        )
+
+        s = generation_output.sequences[0]
+        response = self.tokenizer.decode(s)
+
+        torch_gc()
+        if stop is not None:
+            response = enforce_stop_tokens(response, stop)
+
+        return response
 
 class ChatGLM(LLM):
     max_token: int = 100000

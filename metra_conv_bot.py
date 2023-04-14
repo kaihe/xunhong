@@ -9,7 +9,7 @@ load_dotenv("./.env")
 from chain_bots.metra_tools import mtools
 from chain_bots.prompt import FORMAT_INSTRUCTIONS, PREFIX, SUFFIX
 from langchain.utilities import GoogleSearchAPIWrapper
-from chain_bots.chatglm_llm import ChatGLM
+from chain_bots.chatglm_llm import ChatGLM, LlamaModel
 import torch
 
 search = GoogleSearchAPIWrapper()
@@ -29,7 +29,7 @@ def get_bot():
 
     # llm=OpenAI(temperature=0, max_tokens=512)
 
-    llm = ChatGLM()
+    llm = LlamaModel()
     llm.load_model(model_name_or_path='llama')
 
 
