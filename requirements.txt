@@ -7,3 +7,6 @@ bitsandbytes
 git+https://github.com/huggingface/peft.git
 gradio
 appdirs
+langchain
+openai
+python-dotenv

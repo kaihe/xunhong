@@ -11,3 +11,4 @@ raw_data/*
 train_data/*
 transformers/*
 metra_data_generator/*
+.env
