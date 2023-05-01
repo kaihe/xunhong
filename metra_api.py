@@ -23,7 +23,7 @@ device_config = {
     '面包西饼':['面包西饼店','面包店','西饼店'],
     '糖果小吃':['糖果店','糖果小吃店','小吃店'],
     '书报文具':['报刊亭'],
-    '餐饮':['吃饭的地方','饭店'],
+    '餐饮':['吃饭的地方','饭店','餐厅'],
     '盲道':[],
     '自助售卡充值机':['售卡机'],
     '母婴室':[],
@@ -137,7 +137,7 @@ class MetraData:
         if not line_name in self.line_station_names:
             return f"抱歉广州地铁没有{line_name}"
 
-    def _query_time(self, from_station, to_station):
+    def _query_time(self, type, from_station, to_station):
         from_id = self.station_dict[from_station]
         to_id = self.station_dict[to_station]
         _url = f'{self.url_base}/rest/mtr/serviceTimes?stationId={from_id}&toStationId={to_id}'
@@ -145,7 +145,8 @@ class MetraData:
         service_time = requests.get(_url).json()['serviceTimes']
         service_time = [s for s in service_time if s['stationId'] == from_id]
         try:
-            return service_time[0]['startTime'], service_time[0]['endTime']
+            return service_time[0][type]
+            
             
         except (KeyError,IndexError):
             return API_ERROR
@@ -176,15 +177,19 @@ class MetraData:
 
         return '。'.join(txt_list)+'。'
 
-    def query_route_time(self, from_station, to_station):
+    def query_route_time(self, type, from_station, to_station):
         if self._check_station(from_station):
             return self._check_station(from_station)
         
         if self._check_station(to_station):
             return self._check_station(to_station)
 
-        start_time, end_time = self._query_time(from_station, to_station)
-        txt = f"{from_station}前往{to_station}的首班车时间是{start_time},末班车时间是{end_time}"
+
+        _time = self._query_time(type, from_station, to_station)
+        _facelet = '首班车' if type == 'startTime' else '末班车'
+        txt = f"{from_station}前往{to_station}的{_facelet}时间是{_time}"
+        
+
         return txt
 
     def query_device(self, station_name, device_name):
@@ -291,13 +296,16 @@ class MetraData:
         #     return self._proceed_api_call(api_str)
 
     def _proceed_api_call(self, api_str):
-        return eval(f'self.{api_str}')
+        try:
+            return eval(f'self.{api_str}')
+        except Exception as e:
+            print('error processing '+api_str)
 
 if __name__ == '__main__':
     data = MetraData(reload=False)
     
     
-    result = data.query_station_nearby('高价收废品')
-    print(result)
+    result = data.line_dict.keys()
+    print(','.join(result))
     
     

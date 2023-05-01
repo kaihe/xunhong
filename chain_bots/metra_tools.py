@@ -40,6 +40,9 @@ def query_nearby_station(location):
     else:
         return metra.query_station_nearby(location)
 
+def query_route_time(string):
+    return '暂时没有这方面的数据，您可以咨询地铁站台服务人员'
+
 def query_device(string):
     station, device_type = string.split(",")
     if station == "None":
@@ -66,33 +69,39 @@ def ask_for_information(missing_info):
 
 mtools = [
     Tool(
-        name = "Train Time Query",
+        name = "Train Schedule Query",
         func=query_train_time,
-        description="useful for when you need to answer the latest or earliest train. The input to this tool should be a comma separated list of strings of length two, representing the origin station and destination. For example `南山站,None` means from 南山站 and the destination is unknown.",
+        description="useful for when you need to answer the latest or earliest train of Guangzhou Metro. The input to this tool should be a comma separated list of strings of length two, representing the origin station and destination. For example `南山站,None` means from 南山站 and the destination is unknown.",
         return_direct=False
+    ),
+    Tool(
+        name = "Route Time Query",
+        func=query_route_time,
+        description="useful for when you need to answer how long it takes from origin station to destination station of Guangzhou Metro. The input to this tool should be a comma separated list of strings of length two",
+        return_direct=True
     ),
     Tool(
         name = "Transfer Query",
         func=query_route,
-        description="useful for when you need to answer train route transfer information. The input to this tool should be a comma separated list of strings of length two, representing the origin station and destination station. For example `None,南山站` means the origin station is unknown and destination is 南山站. `None,None` means both the origin and destination are unknown",
+        description="useful for when you need to answer train route transfer information of Guangzhou Metro. The input to this tool should be a comma separated list of strings of length two, representing the origin station and destination station. For example `None,南山站` means the origin station is unknown and destination is 南山站. `None,None` means both the origin and destination are unknown",
         return_direct=False
     ),
     Tool(
         name = "Ticket Query",
         func=query_ticket,
-        description="useful for when you need to answer ticket price information. The input to this tool should be a comma separated list of strings of length two, representing the origin station and destination station. For example `南山站,碧海湾` means ticket price query from 南山站 to 碧海湾",
+        description="useful for when you need to answer ticket price of Guangzhou Metro. The input to this tool should be a comma separated list of strings of length two, representing the origin station and destination station. For example `南山站,碧海湾` means ticket price query from 南山站 to 碧海湾",
         return_direct=False
     ),
     Tool(
         name = "List Stations",
         func=query_stations,
-        description="useful for when you need to list stations of a specific line. Input is the line name. For example, `三号线`,`APM线`,`十三号线`. `None` if user haven't specify which line.",
+        description="useful for when you need to list stations of Guangzhou Metro lines. Input is a line name, valid line names are `一号线,二号线,三北线,三号线,四号线,五号线,八号线,广佛线,APM,六号线,七号线,九号线,十三号线,十四号线,海珠有轨,二十一号线,十四号线,十八号线,二十二号线,黄埔有轨1号线,佛山地铁2号线,南海有轨1号线,佛山地铁3号线`. `None` if user haven't specify which line",
         return_direct=False
     ),
     Tool(
         name = "Device Query",
         func=query_device,
-        description="useful for when you need to find a specific device in a station. The input to this tool should be a comma separated list of numbers of length two, representing the station name and device name. For example `南山站,洗手间` means find device 洗手间 at station 南山站",
+        description="useful for when you need to find a specific device in a station of Guangzhou Metro. The input to this tool should be a comma separated list of numbers of length two, representing the station name and device name. Devices are like 卫生间，便利店，电梯，面包店，餐厅，母婴室. For example `南山站,洗手间` means find device 洗手间 at station 南山站",
         return_direct=False
     ),
     # Tool(

@@ -168,7 +168,7 @@ demo = gr.Interface(
     ],
     outputs=[chatbot, "state"],
     allow_flagging="auto",
-    title="广州地铁机器人",
-    description="可以进行开放领域问答，可以根据外部API进行广州地铁换乘查询，车票查询，设施查询，车站时间查询等",
+    title="机器人",
+    description="",
 )
 demo.queue().launch(share=True, inbrowser=True)

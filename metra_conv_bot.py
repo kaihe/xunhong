@@ -1,6 +1,6 @@
 from langchain.agents import Tool
 from langchain.agents import AgentType
-from langchain.memory import ConversationBufferMemory
+from langchain.memory import ConversationBufferMemory, ConversationBufferWindowMemory
 from langchain import OpenAI
 from langchain.utilities import WikipediaAPIWrapper
 from langchain.agents import initialize_agent
@@ -11,48 +11,84 @@ from chain_bots.prompt import FORMAT_INSTRUCTIONS, PREFIX, SUFFIX
 from langchain.utilities import GoogleSearchAPIWrapper
 from chain_bots.chatglm_llm import ChatGLM, LlamaModel, BloomModel
 import torch
+from langchain.chains.constitutional_ai.base import ConstitutionalChain
+from langchain.chains.constitutional_ai.models import ConstitutionalPrinciple
+from chain_bots.doc_search import get_metro_search_tool
 
-search = GoogleSearchAPIWrapper()
+class BotManager:
+    bots = {}
+    def __init__(self) -> None:
+        pass
+    
+    def get_bot(self, user_id):
+        if user_id in self.bots:
+            return self.bots[user_id]
+        
+        else:
+            return self.init_bot(user_id)
+    
+    def init_bot(self, user_id):
 
+        llm=OpenAI(temperature=0, max_tokens=512)
+        search = GoogleSearchAPIWrapper()
+        metro_search = get_metro_search_tool()
 
-def get_bot():
-
-    tools = [
-        Tool(
-            name = "Google Search Tool",
-            func=search.run,
-            description="always use this tool first before giving answer about factual questions"
-        )
-    ] + mtools
-
-    memory = ConversationBufferMemory(memory_key="chat_history")
-
-    llm=OpenAI(temperature=0, max_tokens=512)
-
-    agent_chain = initialize_agent(tools, llm, agent=AgentType.CONVERSATIONAL_REACT_DESCRIPTION, verbose=True, memory=memory, agent_kwargs={'prefix':PREFIX, 'suffix':SUFFIX, 'format_instructions':FORMAT_INSTRUCTIONS})
-
-    return agent_chain
-
-if __name__ == '__main__':
-    agent_chain = get_bot()
-    # agent_chain.run(input="汉溪长隆到机场南的首班车是几点？")
-    # agent_chain.run(input="车票多少钱？")
-    # agent_chain.run(input="再列下换乘路线")
-    # agent_chain.run(input="华新汇附近的地铁站是哪个？")
-    import gradio as gr
-
-    chatbot = gr.Chatbot().style(color_map=("green", "pink"))
-    demo = gr.Interface(
-        fn=agent_chain.run,
-        inputs=[
-            gr.components.Textbox(
-                lines=2, label="Input", placeholder="请问什么可以帮您？"
+        tools = [
+            Tool(
+                name = "Google Search",
+                func=search.run,
+                description="you need this tool to provide fact based answers, input is keywords in Chinese"
             ),
-            "state"
-        ],
-        outputs=[chatbot, "state"],
-        allow_flagging="auto",
-        title="广州地铁机器人",
-        description="可以进行开放领域问答，可以根据外部API进行广州地铁换乘查询，车票查询，设施查询，车站时间查询等",
-    )
-    demo.queue().launch(share=True, inbrowser=True)
+            Tool(
+                name = "Metro Search",
+                func=metro_search.run,
+                description="you need this tool to answer Guangzhou Metro FAQ questions, input the query"
+            )
+        ] + mtools
+
+        memory = ConversationBufferWindowMemory(k=4, memory_key="chat_history")
+        
+        agent_chain = initialize_agent(tools, llm, agent=AgentType.CONVERSATIONAL_REACT_DESCRIPTION, verbose=True, memory=memory, agent_kwargs={'prefix':PREFIX, 'suffix':SUFFIX, 'format_instructions':FORMAT_INSTRUCTIONS})
+
+        self.bots[user_id] = agent_chain
+
+        return agent_chain
+
+def demo():
+    manager = BotManager()
+
+    import gradio as gr
+    with gr.Blocks() as demo:
+        chatbot = gr.Chatbot()
+        user_id = gr.Textbox(placeholder='请输入一个用户名')
+        msg = gr.Textbox(placeholder='在这里输入内容，开始聊天吧')
+
+        clear = gr.Button("Clear")
+
+        def user(user_message, history):
+            return "", history + [[user_message, None]]
+
+        def bot(user_name, history):
+            agent_chain = manager.get_bot(user_name)
+            bot_message = agent_chain.run(input=history[-1][0])
+            history[-1][1] = bot_message
+            return history
+
+        msg.submit(user, [msg, chatbot], [msg, chatbot], queue=False).then(
+            bot, [user_id, chatbot], chatbot
+        )
+        clear.click(lambda: None, None, chatbot, queue=False)
+
+    demo.launch(share=True)
+
+def test():
+    manager = BotManager()
+    agent = manager.get_bot('test')
+
+    # agent.run('从机场南到大学城南要怎么换乘，票价多少钱')
+    # agent.run('我只有8块钱，能从机场南坐车到大学城南吗？')
+    # agent.run('从机场南到大学城南坐地铁要多久？')
+    agent.run('广州地铁车票能退吗？')
+if __name__ == '__main__':
+    demo()
+    # test()
